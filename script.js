@@ -433,94 +433,99 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProducts('dealsProducts', products.filter(p => parseInt(p.discount) >= 14));
 });
 
-/* =================== PersonaSense Behaviour Tracking (Updated for SalesIQ v3) ===================== */
+/* =================== PersonaSense Behaviour Tracking (SalesIQ v3 FINAL VERSION) ===================== */
 
-(function() {
+document.addEventListener("DOMContentLoaded", function () {
 
-  function trackEvent(name, meta) {
-    try {
-      if (window.$zoho && $zoho.salesiq && typeof $zoho.salesiq.sendEvent === "function") {
-        $zoho.salesiq.sendEvent(name, meta || {});
-        console.log("Tracked:", name, meta);
+  // Wait until SalesIQ widget is fully ready
+  $zoho.salesiq.ready = function () {
+    console.log("SalesIQ FULLY ready — tracking activated!");
+
+    function trackEvent(name, meta) {
+      try {
+        if (window.$zoho && $zoho.salesiq && typeof $zoho.salesiq.sendEvent === "function") {
+          $zoho.salesiq.sendEvent(name, meta || {});
+          console.log("Tracked:", name, meta);
+        }
+      } catch (e) {
+        console.warn("SalesIQ track error:", e);
       }
-    } catch (e) {
-      console.warn("SalesIQ track error:", e);
     }
-  }
 
-  // Deep scroll
-  let deepScrollSent = false;
-  window.addEventListener("scroll", () => {
-    if (deepScrollSent) return;
-    let scrollPercent = (window.scrollY + window.innerHeight) / document.body.scrollHeight;
-    if (scrollPercent > 0.70) {
-      deepScrollSent = true;
-      trackEvent("deep_scroll", { percent: Math.round(scrollPercent * 100) });
-    }
-  });
+    /* ---------- 1) Deep scroll detection ---------- */
+    let deepScrollSent = false;
+    window.addEventListener("scroll", () => {
+      if (deepScrollSent) return;
+      let scrollPercent =
+        (window.scrollY + window.innerHeight) / document.body.scrollHeight;
+      if (scrollPercent > 0.7) {
+        deepScrollSent = true;
+        trackEvent("deep_scroll", { percent: Math.round(scrollPercent * 100) });
+      }
+    });
 
-  // Hover price
-  function attachHoverEvents() {
-    document.querySelectorAll(".product-card .product-price, .product-card img")
-      .forEach(el => {
-        el.addEventListener("mouseover", () => {
-          let pid = el.closest(".product-card")?.dataset.id || null;
-          trackEvent("hover_price", { productId: pid });
+    /* ---------- 2) Hover on price ---------- */
+    function attachHoverEvents() {
+      document
+        .querySelectorAll(".product-card .product-price, .product-card img")
+        .forEach((el) => {
+          el.addEventListener("mouseover", () => {
+            let pid = el.closest(".product-card")?.dataset.id || null;
+            trackEvent("hover_price", { productId: pid });
+          });
         });
-      });
-  }
-  document.addEventListener("DOMContentLoaded", attachHoverEvents);
-
-  // Offer page visit
-  if (window.location.href.toLowerCase().includes("offers")) {
-    trackEvent("offer_page_visit", { url: window.location.href });
-  }
-
-  // Wishlist click
-  document.addEventListener("click", (e) => {
-    if (e.target.closest(".wishlist-btn")) {
-      let pid = e.target.closest(".product-card")?.dataset.id || null;
-      trackEvent("wishlist_click", { productId: pid });
     }
-  });
+    attachHoverEvents();
 
-  // Compare products
-  document.addEventListener("click", (e) => {
-    if (e.target.closest(".compare-btn")) {
-      let pid = e.target.closest(".product-card")?.dataset.id || null;
-      trackEvent("compare_products", { productId: pid });
+    /* ---------- 3) Offer page visit ---------- */
+    if (window.location.href.toLowerCase().includes("offers")) {
+      trackEvent("offer_page_visit", { url: window.location.href });
     }
-  });
 
-  // Add to cart
-  let originalAddToCart = window.addToCart;
-  window.addToCart = function(id) {
-    trackEvent("add_to_cart_event", { productId: id });
-    return originalAddToCart(id);
+    /* ---------- 4) Wishlist ---------- */
+    document.addEventListener("click", (e) => {
+      if (e.target.closest(".wishlist-btn")) {
+        let pid = e.target.closest(".product-card")?.dataset.id || null;
+        trackEvent("wishlist_click", { productId: pid });
+      }
+    });
+
+    /* ---------- 5) Compare products ---------- */
+    document.addEventListener("click", (e) => {
+      if (e.target.closest(".compare-btn")) {
+        let pid = e.target.closest(".product-card")?.dataset.id || null;
+        trackEvent("compare_products", { productId: pid });
+      }
+    });
+
+    /* ---------- 6) Add to cart ---------- */
+    let originalAddToCart = window.addToCart;
+    window.addToCart = function (id) {
+      trackEvent("add_to_cart_event", { productId: id });
+      return originalAddToCart(id);
+    };
+
+    /* ---------- 7) Fast navigation ---------- */
+    let pageStart = Date.now();
+    window.addEventListener("beforeunload", () => {
+      let stay = Date.now() - pageStart;
+      if (stay < 8000) {
+        trackEvent("fast_navigation", { stayTimeMs: stay });
+      }
+    });
+
+    /* ---------- 8) Idle user ---------- */
+    let idleTimer;
+    function resetIdle() {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        trackEvent("idle_user", { idleSec: 20 });
+      }, 20000);
+    }
+
+    ["mousemove", "keydown", "scroll", "click"].forEach((evt) =>
+      window.addEventListener(evt, resetIdle)
+    );
+    resetIdle();
   };
-
-  // Fast navigation
-  let pageStart = Date.now();
-  window.addEventListener("beforeunload", () => {
-    let stayTime = Date.now() - pageStart;
-    if (stayTime < 8000) {
-      trackEvent("fast_navigation", { stayTimeMs: stayTime });
-    }
-  });
-
-  // Idle user
-  let idleTimer;
-  function resetIdle() {
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => {
-      trackEvent("idle_user", { idleSec: 20 });
-    }, 20000);
-  }
-  ["mousemove", "keydown", "scroll", "click"].forEach(evt =>
-    window.addEventListener(evt, resetIdle)
-  );
-  resetIdle();
-
-})();
-
-
+});
