@@ -178,7 +178,8 @@ function renderProducts(container, productsToRender) {
         const savingsPercent = Math.round((savings / product.originalPrice) * 100);
         
         return `
-        <div class="product-card">
+        <div class="product-card" data-id="${product.id}">
+
             <span class="product-badge">${savingsPercent}% OFF</span>
             <span class="prime-badge">Prime</span>
             <img src="${product.image}" alt="${product.name}" class="product-image" onclick="viewProduct(${product.id})">
@@ -209,6 +210,8 @@ function renderProducts(container, productsToRender) {
     `}).join('');
     
     document.getElementById(container).innerHTML = html;
+    document.dispatchEvent(new Event("productsLoaded"));
+
 }
 
 // Filter by category
@@ -433,11 +436,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProducts('dealsProducts', products.filter(p => parseInt(p.discount) >= 14));
 });
 
-/* =================== PersonaSense Behaviour Tracking (SalesIQ v3 FINAL VERSION) ===================== */
+/* =================== PersonaSense Behaviour Tracking (FINAL WORKING VERSION) ===================== */
 
 document.addEventListener("DOMContentLoaded", function () {
 
-  // Wait until SalesIQ widget is fully ready
   $zoho.salesiq.ready = function () {
     console.log("SalesIQ FULLY ready — tracking activated!");
 
@@ -452,60 +454,47 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
-    /* ---------- 1) Deep scroll detection ---------- */
+    /* ---------- HOVER TRACKING ---------- */
+    function attachHoverEvents() {
+      document
+        .querySelectorAll(".product-card img, .product-card .price-current")
+        .forEach((el) => {
+          el.addEventListener("mouseover", () => {
+            let pid = el.closest(".product-card")?.dataset.id;
+            if (pid) {
+              trackEvent("hover_price", { productId: pid });
+            }
+          });
+        });
+    }
+
+    // Attach immediately
+    attachHoverEvents();
+
+    // Attach AFTER dynamic product loading
+    document.addEventListener("productsLoaded", attachHoverEvents);
+
+    /* ---------- DEEP SCROLL ---------- */
     let deepScrollSent = false;
     window.addEventListener("scroll", () => {
       if (deepScrollSent) return;
       let scrollPercent =
         (window.scrollY + window.innerHeight) / document.body.scrollHeight;
+
       if (scrollPercent > 0.7) {
         deepScrollSent = true;
         trackEvent("deep_scroll", { percent: Math.round(scrollPercent * 100) });
       }
     });
 
-    /* ---------- 2) Hover on price ---------- */
-    function attachHoverEvents() {
-      document
-        .querySelectorAll(".product-card .product-price, .product-card img")
-        .forEach((el) => {
-          el.addEventListener("mouseover", () => {
-            let pid = el.closest(".product-card")?.dataset.id || null;
-            trackEvent("hover_price", { productId: pid });
-          });
-        });
-    }
-    attachHoverEvents();
-
-    /* ---------- 3) Offer page visit ---------- */
-    if (window.location.href.toLowerCase().includes("offers")) {
-      trackEvent("offer_page_visit", { url: window.location.href });
-    }
-
-    /* ---------- 4) Wishlist ---------- */
-    document.addEventListener("click", (e) => {
-      if (e.target.closest(".wishlist-btn")) {
-        let pid = e.target.closest(".product-card")?.dataset.id || null;
-        trackEvent("wishlist_click", { productId: pid });
-      }
-    });
-
-    /* ---------- 5) Compare products ---------- */
-    document.addEventListener("click", (e) => {
-      if (e.target.closest(".compare-btn")) {
-        let pid = e.target.closest(".product-card")?.dataset.id || null;
-        trackEvent("compare_products", { productId: pid });
-      }
-    });
-
-    /* ---------- 6) Add to cart ---------- */
+    /* ---------- ADD TO CART ---------- */
     let originalAddToCart = window.addToCart;
     window.addToCart = function (id) {
       trackEvent("add_to_cart_event", { productId: id });
       return originalAddToCart(id);
     };
 
-    /* ---------- 7) Fast navigation ---------- */
+    /* ---------- FAST NAVIGATION ---------- */
     let pageStart = Date.now();
     window.addEventListener("beforeunload", () => {
       let stay = Date.now() - pageStart;
@@ -514,7 +503,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
 
-    /* ---------- 8) Idle user ---------- */
+    /* ---------- IDLE DETECTION ---------- */
     let idleTimer;
     function resetIdle() {
       clearTimeout(idleTimer);
@@ -523,7 +512,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }, 20000);
     }
 
-    ["mousemove", "keydown", "scroll", "click"].forEach((evt) =>
+    ["mousemove", "keydown", "scroll", "click"].forEach(evt =>
       window.addEventListener(evt, resetIdle)
     );
     resetIdle();
