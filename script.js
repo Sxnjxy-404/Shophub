@@ -437,21 +437,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 (function() {
 
-  /* ----------- UPDATED TRACK EVENT FUNCTION (IMPORTANT!) ----------- */
   function trackEvent(name, meta) {
     try {
       if (window.$zoho && $zoho.salesiq && typeof $zoho.salesiq.sendEvent === "function") {
         $zoho.salesiq.sendEvent(name, meta || {});
         console.log("Tracked:", name, meta);
-      } else {
-        console.log("SalesIQ not ready yet…");
       }
     } catch (e) {
       console.warn("SalesIQ track error:", e);
     }
   }
 
-  /* ---------- 1) Deep scroll detection (>70%) ---------- */
+  // Deep scroll
   let deepScrollSent = false;
   window.addEventListener("scroll", () => {
     if (deepScrollSent) return;
@@ -462,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* ---------- 2) Hover on price or product image ---------- */
+  // Hover price
   function attachHoverEvents() {
     document.querySelectorAll(".product-card .product-price, .product-card img")
       .forEach(el => {
@@ -472,15 +469,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
   }
-
   document.addEventListener("DOMContentLoaded", attachHoverEvents);
 
-  /* ---------- 3) Offer page visit ---------- */
+  // Offer page visit
   if (window.location.href.toLowerCase().includes("offers")) {
     trackEvent("offer_page_visit", { url: window.location.href });
   }
 
-  /* ---------- 4) Wishlist click ---------- */
+  // Wishlist click
   document.addEventListener("click", (e) => {
     if (e.target.closest(".wishlist-btn")) {
       let pid = e.target.closest(".product-card")?.dataset.id || null;
@@ -488,7 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* ---------- 5) Compare products ---------- */
+  // Compare products
   document.addEventListener("click", (e) => {
     if (e.target.closest(".compare-btn")) {
       let pid = e.target.closest(".product-card")?.dataset.id || null;
@@ -496,14 +492,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* ---------- 6) Add to cart ---------- */
+  // Add to cart
   let originalAddToCart = window.addToCart;
   window.addToCart = function(id) {
     trackEvent("add_to_cart_event", { productId: id });
     return originalAddToCart(id);
   };
 
-  /* ---------- 7) Fast Navigation (page stay < 8 sec) ---------- */
+  // Fast navigation
   let pageStart = Date.now();
   window.addEventListener("beforeunload", () => {
     let stayTime = Date.now() - pageStart;
@@ -512,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* ---------- 8) Idle user (no activity for 20 sec) ---------- */
+  // Idle user
   let idleTimer;
   function resetIdle() {
     clearTimeout(idleTimer);
@@ -526,3 +522,5 @@ document.addEventListener('DOMContentLoaded', () => {
   resetIdle();
 
 })();
+
+
