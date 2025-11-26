@@ -433,16 +433,20 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProducts('dealsProducts', products.filter(p => parseInt(p.discount) >= 14));
 });
 
-/* =================== PersonaSense Behaviour Tracking ===================== */
+/* =================== PersonaSense Behaviour Tracking (Updated for SalesIQ v3) ===================== */
 
 (function() {
+
+  /* ----------- UPDATED TRACK EVENT FUNCTION (IMPORTANT!) ----------- */
   function trackEvent(name, meta) {
     try {
-      if (window.$zoho && $zoho.salesiq && $zoho.salesiq.visitor) {
-        $zoho.salesiq.visitor.track(name, meta || {});
+      if (window.$zoho && $zoho.salesiq && typeof $zoho.salesiq.sendEvent === "function") {
+        $zoho.salesiq.sendEvent(name, meta || {});
         console.log("Tracked:", name, meta);
+      } else {
+        console.log("SalesIQ not ready yet…");
       }
-    } catch(e) {
+    } catch (e) {
       console.warn("SalesIQ track error:", e);
     }
   }
@@ -460,12 +464,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ---------- 2) Hover on price or product image ---------- */
   function attachHoverEvents() {
-    document.querySelectorAll(".product-card .product-price, .product-card img").forEach(el => {
-      el.addEventListener("mouseover", () => {
-        let pid = el.closest(".product-card")?.dataset.id || null;
-        trackEvent("hover_price", { productId: pid });
+    document.querySelectorAll(".product-card .product-price, .product-card img")
+      .forEach(el => {
+        el.addEventListener("mouseover", () => {
+          let pid = el.closest(".product-card")?.dataset.id || null;
+          trackEvent("hover_price", { productId: pid });
+        });
       });
-    });
   }
 
   document.addEventListener("DOMContentLoaded", attachHoverEvents);
@@ -498,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return originalAddToCart(id);
   };
 
-  /* ---------- 7) Fast Navigation ---------- */
+  /* ---------- 7) Fast Navigation (page stay < 8 sec) ---------- */
   let pageStart = Date.now();
   window.addEventListener("beforeunload", () => {
     let stayTime = Date.now() - pageStart;
@@ -507,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* ---------- 8) Idle user ---------- */
+  /* ---------- 8) Idle user (no activity for 20 sec) ---------- */
   let idleTimer;
   function resetIdle() {
     clearTimeout(idleTimer);
@@ -521,5 +526,3 @@ document.addEventListener('DOMContentLoaded', () => {
   resetIdle();
 
 })();
-
-
